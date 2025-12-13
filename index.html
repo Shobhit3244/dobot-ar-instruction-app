@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Dobot AR Training Manual</title>
+
+  <!-- A-Frame -->
+  <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
+
+  <!-- AR.js -->
+  <script src="https://cdn.jsdelivr.net/gh/AR-js-org/AR.js/aframe/build/aframe-ar.js"></script>
+
+  <!-- Your existing CSS -->
+  <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+  <!-- ================= AR SCENE ================= -->
+  <a-scene
+    embedded
+    arjs="sourceType: webcam; debugUIEnabled: false;"
+    renderer="logarithmicDepthBuffer: true;"
+  >
+
+    <a-entity camera></a-entity>
+
+    <!-- MULTI MARKERS -->
+    <a-marker id="m1" type="pattern" url="markers/marker1.patt"></a-marker>
+    <a-marker id="m2" type="pattern" url="markers/marker2.patt"></a-marker>
+    <a-marker id="m3" type="pattern" url="markers/marker3.patt"></a-marker>
+
+    <!-- Pose locked anchor -->
+    <a-entity id="dobotAnchor">
+      <a-entity
+        id="dobotModel"
+        gltf-model="models/dobot_magician.glb"
+        scale="0.01 0.01 0.01"
+        rotation="0 180 0">
+      </a-entity>
+    </a-entity>
+
+  </a-scene>
+
+  <!-- ================= YOUR EXISTING UI ================= -->
+  <div id="tutorialPanel">
+    <h2 id="stepTitle"></h2>
+    <p id="stepText"></p>
+
+    <div class="buttons">
+      <button onclick="prevStep()">Back</button>
+      <button onclick="nextStep()">Next</button>
+    </div>
+  </div>
+
+  <!-- Scripts -->
+  <script src="tutorialSteps.js"></script>
+  <script src="app.js"></script>
+
+</body>
+</html>

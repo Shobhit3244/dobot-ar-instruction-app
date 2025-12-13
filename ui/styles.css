@@ -1,0 +1,45 @@
+body {
+  margin: 0;
+  font-family: Arial, sans-serif;
+}
+
+#tutorialPanel {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 90%;
+  max-width: 600px;
+  background: rgba(0,0,0,0.75);
+  color: white;
+  padding: 16px;
+  border-radius: 12px;
+  text-align: center;
+}
+
+#tutorialPanel h2 {
+  margin: 0 0 8px;
+  font-size: 20px;
+}
+
+#tutorialPanel p {
+  font-size: 16px;
+}
+
+.buttons {
+  margin-top: 12px;
+}
+
+button {
+  padding: 8px 16px;
+  margin: 0 10px;
+  font-size: 16px;
+  border-radius: 6px;
+  border: none;
+  cursor: pointer;
+}
+
+button:hover {
+  background-color: #00c853;
+  color: black;
+}
