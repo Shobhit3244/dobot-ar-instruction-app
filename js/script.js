@@ -127,8 +127,7 @@ function loadImage(src) {
             side: THREE.DoubleSide
         });
         currentObject = new THREE.Mesh(geo, mat);
-        currentObject.rotation.x = 0;
-        currentObject.rotation.y = Math.PI;
+        currentObject.rotation.y = 0;
         currentObject.rotation.x = -0.2; // ~11°
         currentObject.position.z = 0.2;
         markerRoot.add(currentObject);
