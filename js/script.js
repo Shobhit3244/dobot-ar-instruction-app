@@ -48,7 +48,13 @@ function initAR() {
     renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
     renderer.setClearColor(new THREE.Color("lightgrey"), 0);
     renderer.setSize(window.innerWidth, window.innerHeight);
-    document.getElementById("ar-container").appendChild(renderer.domElement);
+    const arContainer = document.getElementById("ar-container");
+    if (!arContainer) {
+        console.error("❌ #ar-container not found in DOM");
+        return;
+    }
+    arContainer.appendChild(renderer.domElement);
+
 
     arToolkitSource = new THREEx.ArToolkitSource({ sourceType: "webcam" });
     arToolkitSource.init(() => {
