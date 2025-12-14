@@ -108,6 +108,9 @@ function init() {
     renderer.domElement.style.position = 'absolute';
     renderer.domElement.style.top = '0px';
     renderer.domElement.style.left = '0px';
+    renderer.domElement.style.zIndex = '0';
+    renderer.domElement.style.pointerEvents = 'none';
+
     document.body.appendChild(renderer.domElement);
 
     // 4. Setup AR Source (Webcam)
@@ -133,7 +136,6 @@ function init() {
     arToolkitContext.init(function onCompleted() {
         // Copy projection matrix to camera
         camera = new THREE.Camera();
-        arToolkitContext.getProjectionMatrix(camera.projectionMatrix);
         scene.add(camera);
     });
 
@@ -292,6 +294,7 @@ function animate() {
 
     // Render the 3D scene
     renderer.render(scene, camera);
+    console.log("AR ready:", arToolkitSource.ready);
 }
 
 // ====================================================================
