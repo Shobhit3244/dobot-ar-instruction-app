@@ -2,60 +2,322 @@
 <html lang="en">
 
 <head>
+       
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1.0">
-    <title>Dobot Magician AR - Step-by-Step Guide</title>
-
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+       
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+        <title>Dobot Magician AR - Hand Tracking Demo</title>
+       
+           
+    <script src="https://cdn.jsdelivr.net/npm/eruda"></script>
+       
+    <script>eruda.init();</script>
+       
+           
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+       
+           
     <script src="https://cdn.jsdelivr.net/gh/jeromeetienne/AR.js@3.4.5/aframe/build/aframe-ar.js"></script>
+       
     <script src="https://cdn.jsdelivr.net/gh/AR-js-org/AR.js@3.4.5/three.js/build/ar-threex.js"></script>
+       
+           
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
-
+       
+           
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js"></script>
+       
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
+       
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js"></script>
+       
+       
     <link rel="stylesheet" href="css/style.css">
-
-    <style>
-        /* Fallback if style.css doesn't load immediately */
-        body {
-            margin: 0;
-            overflow: hidden;
-            font-family: sans-serif;
-        }
-    </style>
 </head>
 
 <body>
-    <canvas id="arjs-canvas" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%;"></canvas>
+            <div id="loading-screen">
+                <div class="loader"></div>
+                <p>Loading AR Experience...</p>
+                <small>Point camera at marker to begin</small>
+            </div>
 
-    <div id="ui-overlay">
+            <div id="ar-container"></div>
+       
+            <video id="hand-video" style="display: none;"></video>
+        <canvas id="hand-canvas" style="display: none;"></canvas>
 
-        <div class="status-panel">
-            <span>AR Status: </span>
-            <span id="ar-status" class="status-loading">Searching...</span>
-        </div>
+            <div id="ui-overlay">
+               
+                        <div class="status-panel">
+                        <div class="status-item">
+                                <span class="status-label">Hand Detected:</span>
+                                <span id="hand-status" class="status-value">No</span>
+                            </div>
+                        <div class="status-item">
+                                <span class="status-label">Pinch Active:</span>
+                                <span id="pinch-status" class="status-value">No</span>
+                            </div>
+                    </div>
 
-        <div class="instructions-panel">
-            <h3 style="margin: 0 0 5px 0; font-size: 14px; opacity: 0.7;">PICK & PLACE OPERATION</h3>
-            <p id="instruction-text" class="instruction-text">Initializing application...</p>
-        </div>
+                        <div class="instructions">
+                        <div id="main-instructions" class="instruction-text active">
+                                ✋ <strong>AR Hand Tracker:</strong> Place the AR marker in view to load the model. Hand
+                status is reported above.
+                            </div>
+                    </div>
+            </div>
 
-        <div class="step-controls">
-            <button id="prev-btn" class="step-btn" disabled>
-                <i class="fas fa-arrow-left"></i> Previous
-            </button>
+       
+    <script>
+        // Global variables (CLEANED)
+        let scene, arCamera, renderer, arToolkitSource, arToolkitContext, markerRoot;
+        let dobotModel;
+        let handDetected = false, isPinching = false;
+        let pinchPosition = { x: 0, y: 0, z: 0 };
+        let raycaster, mouse;
 
-            <div
-                style="color: white; font-weight: bold; background: rgba(0,0,0,0.5); padding: 5px 10px; border-radius: 4px;">
-                <span id="step-counter">1/9</span>
-            </div>
+        // Hand tracking variables (KEEP)
+        let handsInstance;
+        let handCamera;
+        let handResults = null;
 
-            <button id="next-btn" class="step-btn">
-                Next <i class="fas fa-arrow-right"></i>
-            </button>
-        </div>
-    </div>
+        console.log('🚀 Script loaded, starting initialization...');
 
-    <script src="js/script.js"></script>
+        // Initialize AR scene (KEEP)
+        function initAR() {
+            console.log('📱 Initializing AR...');
+
+            // Setup Three.js scene
+            scene = new THREE.Scene();
+
+            arCamera = new THREE.Camera();
+            scene.add(arCamera);
+
+            renderer = new THREE.WebGLRenderer({
+                antialias: true,
+                alpha: true
+            });
+            renderer.setClearColor(new THREE.Color('lightgrey'), 0);
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.domElement.style.position = 'absolute';
+            renderer.domElement.style.top = '0px';
+            renderer.domElement.style.left = '0px';
+            document.getElementById('ar-container').appendChild(renderer.domElement);
+
+            console.log('✅ Renderer created');
+
+            // Setup AR.js
+            arToolkitSource = new THREEx.ArToolkitSource({
+                sourceType: 'webcam',
+            });
+
+            arToolkitSource.init(function onReady() {
+                console.log('✅ AR source initialized');
+                onResize();
+
+                // Start processing AR camera feed for hand tracking
+                startHandTrackingLoop();
+
+                setTimeout(() => {
+                    document.getElementById('loading-screen').style.opacity = '0';
+                    setTimeout(() => {
+                        document.getElementById('loading-screen').style.display = 'none';
+                    }, 500);
+                }, 1000);
+            }, function onError(error) {
+                console.error('❌ AR source error:', error);
+                alert('Camera access failed. Please allow camera permissions and reload.');
+            });
+
+            window.addEventListener('resize', onResize);
+
+            arToolkitContext = new THREEx.ArToolkitContext({
+                cameraParametersUrl: 'https://cdn.jsdelivr.net/gh/AR-js-org/AR.js@3.4.5/data/data/camera_para.dat',
+                detectionMode: 'mono'
+            });
+
+            arToolkitContext.init(function onCompleted() {
+                arCamera.projectionMatrix.copy(arToolkitContext.getProjectionMatrix());
+                console.log('✅ AR context initialized');
+            });
+
+            // Create marker
+            markerRoot = new THREE.Group();
+            scene.add(markerRoot);
+
+            let markerControls = new THREEx.ArMarkerControls(arToolkitContext, markerRoot, {
+                type: 'pattern',
+                patternUrl: 'https://cdn.jsdelivr.net/gh/AR-js-org/AR.js@3.4.5/data/data/patt.hiro',
+            });
+
+
+            console.log('✅ Marker controls created');
+
+            // Add lighting
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
+            scene.add(ambientLight);
+
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 0.6);
+            directionalLight.position.set(1, 1, 1);
+            scene.add(directionalLight);
+
+            // Load Dobot model
+            loadDobotModel();
+
+            // Setup raycaster for interaction
+            raycaster = new THREE.Raycaster();
+            mouse = new THREE.Vector2();
+
+            // Initialize hand tracking
+            initHandTracking();
+
+            // Start render loop
+            animate();
+        }
+
+        function loadDobotModel() {
+            console.log('📦 Loading Dobot model...');
+            const loader = new THREE.GLTFLoader();
+
+            loader.load('models/dobot_magician.glb', function (gltf) {
+                dobotModel = gltf.scene;
+
+                dobotModel.scale.set(0.001, 0.001, 0.001);
+                dobotModel.rotation.x = Math.PI / 2;
+                dobotModel.position.set(0, 0, 0);
+
+                markerRoot.add(dobotModel);
+
+                console.log('✅ Dobot model loaded successfully');
+            }, function (progress) {
+                console.log('Loading:', (progress.loaded / progress.total * 100).toFixed(0) + '%');
+            }, function (error) {
+                console.error('❌ Error loading model:', error);
+
+                // Add a dummy object if the model fails to load
+                const geometry = new THREE.BoxGeometry(0.1, 0.1, 0.1);
+                const material = new THREE.MeshBasicMaterial({ color: 0xff0000 });
+                dobotModel = new THREE.Mesh(geometry, material);
+                markerRoot.add(dobotModel);
+            });
+        }
+
+        // REMOVED: extractJoints, createJointRings, createDefaultJoints, updateRingVisibility
+
+        // REMOVED: switchToJointMode, switchToIKMode
+
+        function onResize() {
+            arToolkitSource.onResizeElement();
+            arToolkitSource.copyElementSizeTo(renderer.domElement);
+            if (arToolkitContext.arController !== null) {
+                arToolkitSource.copyElementSizeTo(arToolkitContext.arController.canvas);
+            }
+        }
+
+        // Hand tracking initialization (KEEP)
+        function initHandTracking() {
+            console.log('👋 Initializing hand tracking (using AR camera)...');
+
+            handsInstance = new Hands({
+                locateFile: (file) => {
+                    return `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`;
+                }
+            });
+
+            handsInstance.setOptions({
+                maxNumHands: 1,
+                modelComplexity: 0,
+                minDetectionConfidence: 0.5,
+                minTrackingConfidence: 0.5
+            });
+
+            handsInstance.onResults(onHandResults);
+
+            console.log('✅ Hand tracking initialized (camera-free mode)');
+        }
+
+        function onHandResults(results) {
+            handResults = results;
+
+            if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
+                handDetected = true;
+                document.getElementById('hand-status').textContent = 'Yes';
+
+                const landmarks = results.multiHandLandmarks[0];
+                handlePinchInteraction(landmarks);
+            } else {
+                handDetected = false;
+                document.getElementById('hand-status').textContent = 'No';
+                isPinching = false;
+                document.getElementById('pinch-status').textContent = 'No';
+            }
+        }
+
+        function handlePinchInteraction(handLandmarks) {
+            if (!dobotModel) return;
+
+            const indexTip = handLandmarks[8];
+            const thumbTip = handLandmarks[4];
+
+            const pinchDistance = Math.sqrt(
+                Math.pow(indexTip.x - thumbTip.x, 2) +
+                Math.pow(indexTip.y - thumbTip.y, 2) +
+                Math.pow(indexTip.z - thumbTip.z, 2)
+            );
+
+            isPinching = pinchDistance < 0.05;
+            document.getElementById('pinch-status').textContent = isPinching ? 'Yes' : 'No';
+
+            // REMOVED: handleJointControl and handleIKControl calls
+
+            if (isPinching) {
+                // Calculate pinch position (even if not used for control, useful for debugging)
+                pinchPosition.x = (indexTip.x - 0.5) * 2;
+                pinchPosition.y = -(indexTip.y - 0.5) * 2;
+                pinchPosition.z = -indexTip.z;
+            }
+        }
+
+        // REMOVED: handleJointControl, handleIKControl
+
+        // Process hand tracking from AR camera feed (KEEP)
+        function startHandTrackingLoop() {
+            console.log('🎥 Starting hand tracking from AR camera...');
+
+            function processFrame() {
+                if (arToolkitSource && arToolkitSource.ready && arToolkitSource.domElement) {
+                    // Send AR camera frame to MediaPipe for hand detection
+                    handsInstance.send({ image: arToolkitSource.domElement }).catch(err => {
+                        // Silently catch errors to avoid console spam
+                    });
+                }
+
+                // Process at ~15 FPS to reduce load
+                setTimeout(processFrame, 66);
+            }
+
+            processFrame();
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            if (arToolkitSource && arToolkitSource.ready) {
+                arToolkitContext.update(arToolkitSource.domElement);
+            }
+
+            // REMOVED: Joint Ring pulsation logic
+
+            renderer.render(scene, arCamera);
+        }
+
+        // Initialize when page loads (KEEP)
+        window.addEventListener('load', function () {
+            console.log('🌐 Page loaded, starting AR...');
+            initAR();
+        });
+    </script>
 </body>
 
 </html>
