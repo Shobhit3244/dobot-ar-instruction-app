@@ -73,37 +73,44 @@ const STEPS = [
 
 let scene, camera, renderer;
 let arToolkitSource, arToolkitContext, arMarkerRoot;
-let currentModelGroup = null;
-let currentStepIndex = 0;
-const loader = new THREE.GLTFLoader();
+let currentModelGroup = null; // Container for the currently visible 3D model
+let currentStepIndex = 0;     // Tracks which step we are on (0 to 8)
+const loader = new THREE.GLTFLoader(); // Loader for GLTF/GLB files
 
 // ====================================================================
 // INITIALIZATION
 // ====================================================================
 
 function init() {
-    console.log('🚀 Initializing AR Instruction App for 12 Steps...');
+    console.log('🚀 Initializing AR Instruction App...');
 
-    // 1. Setup Three.js Scene and Lighting
+    // 1. Setup Three.js Scene
     scene = new THREE.Scene();
-    scene.add(new THREE.AmbientLight(0xffffff, 0.8));
+
+    // 2. Setup Lighting
+    // Ambient light for general illumination
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
+    scene.add(ambientLight);
+
+    // Directional light to create depth and shadows on the model
     const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
     directionalLight.position.set(1, 2, 3);
     scene.add(directionalLight);
 
-    // 2. Setup Renderer (CRITICAL FIX: Attach to the canvas)
+    // 3. Setup Renderer
     renderer = new THREE.WebGLRenderer({
         antialias: true,
-        alpha: true,
-        logarithmicDepthBuffer: true,
-        // *** FIX: Explicitly target the canvas element ***
-        canvas: document.getElementById('arjs-canvas')
+        alpha: true, // Crucial for AR: allows camera feed to show through
+        logarithmicDepthBuffer: true
     });
-
     renderer.setClearColor(new THREE.Color('lightgrey'), 0);
     renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.domElement.style.position = 'absolute';
+    renderer.domElement.style.top = '0px';
+    renderer.domElement.style.left = '0px';
+    document.body.appendChild(renderer.domElement);
 
-    // 3. Setup AR Source (Webcam)
+    // 4. Setup AR Source (Webcam)
     arToolkitSource = new THREEx.ArToolkitSource({
         sourceType: 'webcam',
     });
@@ -112,38 +119,42 @@ function init() {
         onResize();
     });
 
+    // Handle window resizing
     window.addEventListener('resize', function () {
         onResize();
     });
 
-    // 4. Setup AR Context
+    // 5. Setup AR Context
     arToolkitContext = new THREEx.ArToolkitContext({
         cameraParametersUrl: 'https://cdn.jsdelivr.net/gh/AR-js-org/AR.js@3.4.5/data/data/camera_para.dat',
         detectionMode: 'mono',
     });
 
     arToolkitContext.init(function onCompleted() {
+        // Copy projection matrix to camera
         camera = new THREE.Camera();
         arToolkitContext.getProjectionMatrix(camera.projectionMatrix);
         scene.add(camera);
     });
 
-    // 5. Setup Marker Controls
+    // 6. Setup Marker Controls (Hiro Pattern)
+    //  
+    // This group will follow the physical marker
     arMarkerRoot = new THREE.Group();
     scene.add(arMarkerRoot);
 
     let markerControls = new THREEx.ArMarkerControls(arToolkitContext, arMarkerRoot, {
         type: 'pattern',
-        patternUrl: 'https://cdn.jsdelivr.net/gh/AR-js-org/AR.js@3.4.5/data/data/patt.hiro', // 
+        patternUrl: 'https://cdn.jsdelivr.net/gh/AR-js-org/AR.js@3.4.5/data/data/patt.hiro',
         changeMatrixMode: 'modelViewMatrix'
     });
 
-    // 6. Add Marker Status Listeners
+    // 7. Add Marker Status Listeners (For UI feedback)
     markerControls.addEventListener('markerFound', () => {
         const statusEl = document.getElementById('ar-status');
         if (statusEl) {
             statusEl.textContent = "Marker Found";
-            statusEl.className = "status-ok";
+            statusEl.className = "status-ok"; // Green text via CSS
         }
     });
 
@@ -151,14 +162,14 @@ function init() {
         const statusEl = document.getElementById('ar-status');
         if (statusEl) {
             statusEl.textContent = "Searching...";
-            statusEl.className = "status-loading";
+            statusEl.className = "status-loading"; // Orange text via CSS
         }
     });
 
-    // 7. Start Application Logic
-    setupUI();
-    loadStep(0);
-    animate();
+    // 8. Start Application Logic
+    setupUI();       // Attach click listeners to buttons
+    loadStep(0);     // Load the first model
+    animate();       // Start the render loop
 }
 
 // ====================================================================
@@ -167,32 +178,35 @@ function init() {
 
 /**
  * Loads the specific model for the given index in the STEPS array.
+ * Handles cleanup of previous models to save memory.
  */
 function loadStep(index) {
-    // Safety check for index boundaries
-    if (index < 0 || index >= STEPS.length) return;
-
     const stepData = STEPS[index];
     currentStepIndex = index;
 
     // --- UPDATE UI ---
+    // Update instruction text
     document.getElementById('instruction-text').textContent = stepData.text;
+
+    // Update counter (e.g., "1/9")
     document.getElementById('step-counter').textContent = `${index + 1}/${STEPS.length}`;
+
+    // Enable/Disable buttons based on position
     document.getElementById('prev-btn').disabled = (index === 0);
     document.getElementById('next-btn').disabled = (index === STEPS.length - 1);
 
     // --- CLEANUP OLD MODEL ---
     if (currentModelGroup) {
         arMarkerRoot.remove(currentModelGroup);
+
+        // Deep cleanup to prevent memory leaks (Crucial for WebGL)
         currentModelGroup.traverse((child) => {
             if (child.isMesh) {
-                if (child.geometry) child.geometry.dispose();
-                if (child.material) {
-                    if (Array.isArray(child.material)) {
-                        child.material.forEach(m => m.dispose());
-                    } else {
-                        child.material.dispose();
-                    }
+                child.geometry.dispose();
+                if (Array.isArray(child.material)) {
+                    child.material.forEach(m => m.dispose());
+                } else {
+                    child.material.dispose();
                 }
             }
         });
@@ -207,20 +221,25 @@ function loadStep(index) {
         function (gltf) {
             currentModelGroup = gltf.scene;
 
-            // --- MODEL ADJUSTMENTS ---
-            // Ensure this scale/rotation matches your Dobot model
+            // --- ADJUSTMENTS ---
+            // SCALE: Adjust this if your model looks too big or too small.
+            // 0.001 is common if the model was exported in millimeters.
+            // 0.1 or 1.0 might be needed depending on your export settings.
             currentModelGroup.scale.set(0.001, 0.001, 0.001);
+
+            // ROTATION: GLTF often exports Y-up, but AR.js markers might need X rotation.
+            // Adjust this if your robot is lying sideways.
             currentModelGroup.rotation.x = -Math.PI / 2;
 
             arMarkerRoot.add(currentModelGroup);
             console.log(`✅ Step ${index + 1} Loaded Successfully`);
         },
         function (xhr) {
-            // Progress callback (optional)
+            // Optional: Progress indicator could go here
         },
         function (error) {
             console.error('❌ Error loading model:', error);
-            document.getElementById('instruction-text').textContent = `Error: Could not load ${stepData.file}. Check browser console.`;
+            document.getElementById('instruction-text').textContent = `Error: Could not load ${stepData.file}. Please check file path.`;
         }
     );
 }
@@ -234,19 +253,23 @@ function setupUI() {
 
     if (nextBtn) {
         nextBtn.addEventListener('click', () => {
-            loadStep(currentStepIndex + 1);
+            if (currentStepIndex < STEPS.length - 1) {
+                loadStep(currentStepIndex + 1);
+            }
         });
     }
 
     if (prevBtn) {
         prevBtn.addEventListener('click', () => {
-            loadStep(currentStepIndex - 1);
+            if (currentStepIndex > 0) {
+                loadStep(currentStepIndex - 1);
+            }
         });
     }
 }
 
 /**
- * Handles window resizing.
+ * Handles window resizing to keep AR video and canvas aligned.
  */
 function onResize() {
     arToolkitSource.onResizeElement();
@@ -262,10 +285,12 @@ function onResize() {
 function animate() {
     requestAnimationFrame(animate);
 
+    // Update AR context (finds marker in video)
     if (arToolkitSource.ready) {
         arToolkitContext.update(arToolkitSource.domElement);
     }
 
+    // Render the 3D scene
     renderer.render(scene, camera);
 }
 
