@@ -1,6 +1,6 @@
-// =====================================================
-// STEP CONFIGURATION (TEXT PRESERVED EXACTLY)
-// =====================================================
+/* =====================================================
+    STEP CONFIGURATION (UNCHANGED)
+===================================================== */
 
 const STEPS = [
     { type: "model", file: "models/model1.glb", text: "Step 1: Click the power button and wait for green light." },
@@ -21,189 +21,192 @@ const STEPS = [
     { type: "model", file: "models/model12.glb", text: "Step 12: Power off robot." }
 ];
 
-// =====================================================
-// GLOBAL VARIABLES
-// =====================================================
+/* =====================================================
+   GLOBALS
+===================================================== */
 
-let scene, camera, renderer;
-let arSource, arContext, markerRoot;
+let scene, arCamera, renderer;
+let arToolkitSource, arToolkitContext, markerRoot;
 let currentObject = null;
 let currentStep = 0;
 
 const gltfLoader = new THREE.GLTFLoader();
 const textureLoader = new THREE.TextureLoader();
 
-// =====================================================
-// INITIALIZATION
-// =====================================================
+/* =====================================================
+   INIT AR (MATCHES WORKING PROJECT)
+===================================================== */
 
-window.addEventListener("load", init);
+function initAR() {
 
-function init() {
     console.log("🚀 Initializing AR Instruction App");
 
-    // Scene & Camera
     scene = new THREE.Scene();
-    camera = new THREE.Camera();
-    scene.add(camera);
 
-    // Lighting
-    scene.add(new THREE.AmbientLight(0xffffff, 1));
-    const dirLight = new THREE.DirectionalLight(0xffffff, 0.6);
-    dirLight.position.set(1, 2, 3);
-    scene.add(dirLight);
+    arCamera = new THREE.Camera();
+    scene.add(arCamera);
 
-    // Renderer
     renderer = new THREE.WebGLRenderer({
         antialias: true,
         alpha: true
     });
+
+    renderer.setClearColor(new THREE.Color("lightgrey"), 0);
     renderer.setSize(window.innerWidth, window.innerHeight);
     renderer.domElement.style.position = "absolute";
     renderer.domElement.style.top = "0px";
     renderer.domElement.style.left = "0px";
-    document.body.appendChild(renderer.domElement);
 
-    // AR Toolkit Source (Camera)
-    arSource = new THREEx.ArToolkitSource({
-        sourceType: "webcam"
-    });
+    const arContainer = document.getElementById("ar-container");
+    if (arContainer) {
+        arContainer.appendChild(renderer.domElement);
+    } else {
+        console.error("❌ #ar-container missing in HTML");
+        return;
+    }
 
-    arSource.init(() => {
-        arSource.domElement.style.position = "absolute";
-        arSource.domElement.style.top = "0px";
-        arSource.domElement.style.left = "0px";
-        arSource.domElement.style.zIndex = "-1";
-        document.body.appendChild(arSource.domElement);
+    /* ---------- AR SOURCE ---------- */
+    arToolkitSource = new THREEx.ArToolkitSource({ sourceType: "webcam" });
+
+    arToolkitSource.init(() => {
+        console.log("✅ Camera ready");
         onResize();
+
+        const loading = document.getElementById("loading-screen");
+        if (loading) {
+            loading.style.opacity = "0";
+            setTimeout(() => loading.style.display = "none", 500);
+        }
     });
 
     window.addEventListener("resize", onResize);
 
-    // AR Context
-    arContext = new THREEx.ArToolkitContext({
+    /* ---------- AR CONTEXT ---------- */
+    arToolkitContext = new THREEx.ArToolkitContext({
         cameraParametersUrl:
             "https://cdn.jsdelivr.net/gh/AR-js-org/AR.js@3.4.5/data/data/camera_para.dat",
         detectionMode: "mono"
     });
 
-    arContext.init(() => {
-        console.log("✅ AR Context initialized");
+    arToolkitContext.init(() => {
+        arCamera.projectionMatrix.copy(arToolkitContext.getProjectionMatrix());
+        console.log("✅ AR context initialized");
     });
 
-    // Marker
+    /* ---------- MARKER ---------- */
     markerRoot = new THREE.Group();
     scene.add(markerRoot);
 
-    new THREEx.ArMarkerControls(arContext, markerRoot, {
+    new THREEx.ArMarkerControls(arToolkitContext, markerRoot, {
         type: "pattern",
         patternUrl:
             "https://cdn.jsdelivr.net/gh/AR-js-org/AR.js@3.4.5/data/data/patt.hiro"
     });
 
-    // UI Buttons
-    document.getElementById("next").addEventListener("click", () => {
-        if (currentStep < STEPS.length - 1) loadStep(currentStep + 1);
-    });
+    /* ---------- LIGHTING ---------- */
+    scene.add(new THREE.AmbientLight(0xffffff, 0.9));
+    const dirLight = new THREE.DirectionalLight(0xffffff, 0.6);
+    dirLight.position.set(1, 1, 1);
+    scene.add(dirLight);
 
-    document.getElementById("prev").addEventListener("click", () => {
-        if (currentStep > 0) loadStep(currentStep - 1);
-    });
+    /* ---------- UI ---------- */
+    const nextBtn = document.getElementById("next");
+    const prevBtn = document.getElementById("prev");
 
-    // Start
+    if (nextBtn) nextBtn.onclick = () => currentStep < STEPS.length - 1 && loadStep(currentStep + 1);
+    if (prevBtn) prevBtn.onclick = () => currentStep > 0 && loadStep(currentStep - 1);
+
     loadStep(0);
     animate();
 }
 
-// =====================================================
-// LOAD STEP
-// =====================================================
+/* =====================================================
+   STEP LOADER
+===================================================== */
 
 function loadStep(index) {
     currentStep = index;
     const step = STEPS[index];
 
-    // Update instruction text
-    document.getElementById("text").innerText = step.text;
+    const textEl = document.getElementById("text");
+    if (textEl) textEl.innerText = step.text;
 
-    // Remove previous object
     if (currentObject) {
         markerRoot.remove(currentObject);
         disposeObject(currentObject);
         currentObject = null;
     }
 
-    // Load new object
-    if (step.type === "image") {
-        loadImage(step.file);
-    } else {
-        loadModel(step.file);
-    }
+    step.type === "image"
+        ? loadImage(step.file)
+        : loadModel(step.file);
 }
 
-// =====================================================
-// LOAD IMAGE (PNG)
-// =====================================================
-
+/* ---------- IMAGE ---------- */
 function loadImage(src) {
     textureLoader.load(src, texture => {
-        const geometry = new THREE.PlaneGeometry(1.2, 0.8);
-        const material = new THREE.MeshBasicMaterial({
+        const geo = new THREE.PlaneGeometry(1.2, 0.8);
+        const mat = new THREE.MeshBasicMaterial({
             map: texture,
-            transparent: true
+            transparent: true,
+            side: THREE.DoubleSide
         });
-
-        currentObject = new THREE.Mesh(geometry, material);
+        currentObject = new THREE.Mesh(geo, mat);
         currentObject.rotation.x = -Math.PI / 2;
         markerRoot.add(currentObject);
     });
 }
 
-// =====================================================
-// LOAD MODEL (GLB)
-// =====================================================
-
+/* ---------- MODEL ---------- */
 function loadModel(src) {
     gltfLoader.load(src, gltf => {
         currentObject = gltf.scene;
-        currentObject.scale.set(0.05, 0.05, 0.05);
-        currentObject.rotation.x = -Math.PI / 2;
+        currentObject.scale.set(0.001, 0.001, 0.001);
+        currentObject.rotation.x = Math.PI / 2;
         markerRoot.add(currentObject);
     });
 }
 
-// =====================================================
-// CLEANUP (PREVENT MEMORY LEAKS)
-// =====================================================
-
+/* ---------- CLEANUP ---------- */
 function disposeObject(obj) {
+    if (!obj) return;
     obj.traverse(child => {
         if (child.isMesh) {
-            child.geometry.dispose();
-            if (child.material.map) child.material.map.dispose();
-            child.material.dispose();
+            child.geometry?.dispose();
+            if (child.material?.map) child.material.map.dispose();
+            child.material?.dispose();
         }
     });
 }
 
-// =====================================================
-// RENDER LOOP
-// =====================================================
+/* =====================================================
+   LOOP
+===================================================== */
 
 function animate() {
     requestAnimationFrame(animate);
-    if (arSource.ready) arContext.update(arSource.domElement);
-    renderer.render(scene, camera);
+
+    if (arToolkitSource?.ready) {
+        arToolkitContext.update(arToolkitSource.domElement);
+    }
+
+    renderer.render(scene, arCamera);
 }
 
-// =====================================================
-// RESIZE HANDLER
-// =====================================================
+/* =====================================================
+   RESIZE
+===================================================== */
 
 function onResize() {
-    arSource.onResizeElement();
-    arSource.copyElementSizeTo(renderer.domElement);
-    if (arContext.arController) {
-        arSource.copyElementSizeTo(arContext.arController.canvas);
+    arToolkitSource.onResizeElement();
+    arToolkitSource.copyElementSizeTo(renderer.domElement);
+    if (arToolkitContext.arController) {
+        arToolkitSource.copyElementSizeTo(arToolkitContext.arController.canvas);
     }
 }
+
+/* =====================================================
+   START
+===================================================== */
+
+window.addEventListener("load", initAR);
