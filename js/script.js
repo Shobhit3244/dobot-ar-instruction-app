@@ -7,48 +7,63 @@
 const STEPS = [
     {
         id: 1,
-        file: 'models/step1.glb',
-        text: "Step 1: Home Position - The Dobot starts at its defined home coordinates (X:200, Y:0, Z:0)."
+        file: 'models/model1.glb',
+        text: "Step 1: Click the power button and Wait for light to become green."
     },
     {
         id: 2,
-        file: 'models/step2.glb',
-        text: "Step 2: Approach - The arm moves horizontally to the target object's location."
+        file: 'models/model2.glb',
+        text: "Step 2: In the software select com port and hit connect ."
     },
     {
         id: 3,
-        file: 'models/step3.glb',
-        text: "Step 3: Descend - The Z-axis lowers the end-effector towards the object."
+        file: 'models/model3.glb',
+        text: "Step 3: Select teaching and playback mode."
     },
     {
         id: 4,
-        file: 'models/step4.glb',
-        text: "Step 4: Grip - The pneumatic gripper activates (or suction cup) to grab the object."
+        file: 'models/model4.glb',
+        text: "Step 4: Click on new file and press discard to create an empty new file."
     },
     {
         id: 5,
-        file: 'models/step5.glb',
-        text: "Step 5: Lift - The arm raises the object vertically to clear obstacles."
+        file: 'models/model5.glb',
+        text: "Step 5: In tools, Select suction cup."
     },
     {
         id: 6,
-        file: 'models/step6.glb',
-        text: "Step 6: Transport - The arm rotates the base to move the object to the destination."
+        file: 'models/model6.glb',
+        text: "Step 6: Come to robot and find the button on top."
     },
     {
         id: 7,
-        file: 'models/step7.glb',
-        text: "Step 7: Lower - The arm lowers the object at the drop-off coordinates."
+        file: 'models/model7.glb',
+        text: "Step 7: Press it and move the robot arm, release to set the position. You can see the entry in software."
     },
     {
         id: 8,
-        file: 'models/step8.glb',
-        text: "Step 8: Release - The gripper deactivates, releasing the object."
+        file: 'models/model8.glb',
+        text: "Step 8: In the latest entry go to suction cup and set it to SuctionCupOn."
     },
     {
         id: 9,
-        file: 'models/step9.glb',
-        text: "Step 9: Return - The arm returns to the safe Home position."
+        file: 'models/model9.glb',
+        text: "Step 9: Move the arm up and to the position you want to drop the cube. Make sure that all the path in between have SuctionCupOn."
+    },
+    {
+        id: 10,
+        file: 'models/model10.glb',
+        text: "Step 10: Bring it to center and press start. You can adjust the loop multiplier to repeat the motion."
+    },
+    {
+        id: 11,
+        file: 'models/model11.glb',
+        text: "Step 11: Hit exit then hit disconnect ."
+    },
+    {
+        id: 12,
+        file: 'models/model12.glb',
+        text: "Step 12: Hit the power button and the machine will go to home position and then turn off."
     }
 ];
 
