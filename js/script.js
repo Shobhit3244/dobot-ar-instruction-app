@@ -152,6 +152,7 @@ function loadImage(src) {
             side: THREE.DoubleSide
         });
         currentObject = new THREE.Mesh(geo, mat);
+        currentObject.scale.set(1, 1, 1);
         currentObject.rotation.x = -Math.PI / 2;
         markerRoot.add(currentObject);
     });
