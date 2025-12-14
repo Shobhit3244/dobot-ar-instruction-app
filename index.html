@@ -2,81 +2,66 @@
 <html lang="en">
 
 <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
-    <title>Dobot Magician AR - Step-by-Step Guide</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, user-scalable=no">
+    <title>Dobot AR Instruction Manual</title>
 
-    <!-- Debug Console (Mobile) -->
+    <!-- Mobile Debug -->
     <script src="https://cdn.jsdelivr.net/npm/eruda"></script>
     <script>eruda.init();</script>
-
-    <!-- Icons -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
     <!-- Three.js -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 
-    <!-- AR.js (Three.js ONLY — NO A-FRAME) -->
+    <!-- AR.js (Three.js pipeline only) -->
     <script src="https://cdn.jsdelivr.net/gh/AR-js-org/AR.js@3.4.5/three.js/build/ar-threex.js"></script>
 
     <!-- GLTF Loader -->
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
 
-    <!-- UI Styling -->
-    <link rel="stylesheet" href="css/style.css">
-
     <style>
         body {
             margin: 0;
             overflow: hidden;
-            font-family: sans-serif;
             background: black;
+            font-family: sans-serif;
         }
 
-        #ui-overlay {
+        #ui {
             position: absolute;
             z-index: 10;
+            bottom: 10px;
             width: 100%;
-            height: 100%;
+            text-align: center;
             pointer-events: none;
         }
 
-        .step-controls button {
+        #text {
+            color: white;
+            background: rgba(0, 0, 0, 0.6);
+            padding: 10px;
+            margin: 0 12px 8px;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+
+        button {
             pointer-events: auto;
+            padding: 10px 18px;
+            margin: 4px;
+            font-size: 14px;
         }
     </style>
 </head>
 
 <body>
 
-    <div id="ui-overlay">
-
-        <div class="status-panel">
-            <span>AR Status: </span>
-            <span id="ar-status" class="status-loading">Searching...</span>
-        </div>
-
-        <div class="instructions-panel">
-            <h3 style="margin: 0 0 5px 0; font-size: 14px; opacity: 0.7;">
-                PICK & PLACE OPERATION
-            </h3>
-            <p id="instruction-text">Initializing...</p>
-        </div>
-
-        <div class="step-controls">
-            <button id="prev-btn" disabled>
-                <i class="fas fa-arrow-left"></i> Previous
-            </button>
-
-            <div id="step-counter">1/12</div>
-
-            <button id="next-btn">
-                Next <i class="fas fa-arrow-right"></i>
-            </button>
-        </div>
+    <div id="ui">
+        <div id="text">Initializing AR…</div>
+        <button id="prev">◀ Previous</button>
+        <button id="next">Next ▶</button>
     </div>
 
-    <!-- MAIN SCRIPT -->
     <script src="js/script.js"></script>
 </body>
 

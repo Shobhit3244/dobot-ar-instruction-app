@@ -1,52 +1,62 @@
 // =====================================================
-// STEP CONFIGURATION
+// STEP CONFIGURATION (TEXT PRESERVED EXACTLY)
 // =====================================================
 
 const STEPS = [
-    { file: "models/model1.glb", text: "Step 1: Click the power button and wait for green light." },
-    { file: "models/model2.glb", text: "Step 2: Select COM port and click connect." },
-    { file: "models/model3.glb", text: "Step 3: Select teaching and playback mode." },
-    { file: "models/model4.glb", text: "Step 4: Create a new empty file." },
-    { file: "models/model5.glb", text: "Step 5: Select suction cup tool." },
-    { file: "models/model6.glb", text: "Step 6: Locate button on robot arm." },
-    { file: "models/model7.glb", text: "Step 7: Press button and move arm." },
-    { file: "models/model8.glb", text: "Step 8: Enable SuctionCupOn." },
-    { file: "models/model9.glb", text: "Step 9: Move arm to drop position." },
-    { file: "models/model10.glb", text: "Step 10: Press start." },
-    { file: "models/model11.glb", text: "Step 11: Exit and disconnect." },
-    { file: "models/model12.glb", text: "Step 12: Power off robot." }
+    { type: "model", file: "models/model1.glb", text: "Step 1: Click the power button and wait for green light." },
+
+    { type: "image", file: "models/model2.png", text: "Step 2: Select COM port and click connect." },
+    { type: "image", file: "models/model3.png", text: "Step 3: Select teaching and playback mode." },
+    { type: "image", file: "models/model4.png", text: "Step 4: Create a new empty file." },
+    { type: "image", file: "models/model5.png", text: "Step 5: Select suction cup tool." },
+
+    { type: "model", file: "models/model6.glb", text: "Step 6: Locate button on robot arm." },
+
+    { type: "image", file: "models/model7.png", text: "Step 7: Press button and move arm." },
+    { type: "image", file: "models/model8.png", text: "Step 8: Enable SuctionCupOn." },
+    { type: "image", file: "models/model9.png", text: "Step 9: Move arm to drop position." },
+    { type: "image", file: "models/model10.png", text: "Step 10: Press start." },
+    { type: "image", file: "models/model11.png", text: "Step 11: Exit and disconnect." },
+
+    { type: "model", file: "models/model12.glb", text: "Step 12: Power off robot." }
 ];
 
+// =====================================================
+// GLOBAL VARIABLES
+// =====================================================
+
 let scene, camera, renderer;
-let arToolkitSource, arToolkitContext;
-let markerRoot;
-let currentModel = null;
-let stepIndex = 0;
+let arSource, arContext, markerRoot;
+let currentObject = null;
+let currentStep = 0;
 
-const loader = new THREE.GLTFLoader();
+const gltfLoader = new THREE.GLTFLoader();
+const textureLoader = new THREE.TextureLoader();
 
 // =====================================================
-// INIT
+// INITIALIZATION
 // =====================================================
+
+window.addEventListener("load", init);
 
 function init() {
-    console.log("🚀 Initializing AR Instruction App...");
+    console.log("🚀 Initializing AR Instruction App");
 
+    // Scene & Camera
     scene = new THREE.Scene();
-
     camera = new THREE.Camera();
     scene.add(camera);
 
-    // Lights
-    scene.add(new THREE.AmbientLight(0xffffff, 0.9));
-    const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+    // Lighting
+    scene.add(new THREE.AmbientLight(0xffffff, 1));
+    const dirLight = new THREE.DirectionalLight(0xffffff, 0.6);
     dirLight.position.set(1, 2, 3);
     scene.add(dirLight);
 
     // Renderer
     renderer = new THREE.WebGLRenderer({
-        alpha: true,
-        antialias: true
+        antialias: true,
+        alpha: true
     });
     renderer.setSize(window.innerWidth, window.innerHeight);
     renderer.domElement.style.position = "absolute";
@@ -54,58 +64,53 @@ function init() {
     renderer.domElement.style.left = "0px";
     document.body.appendChild(renderer.domElement);
 
-    // AR Toolkit Source (CAMERA)
-    arToolkitSource = new THREEx.ArToolkitSource({
+    // AR Toolkit Source (Camera)
+    arSource = new THREEx.ArToolkitSource({
         sourceType: "webcam"
     });
 
-    arToolkitSource.init(() => {
+    arSource.init(() => {
+        arSource.domElement.style.position = "absolute";
+        arSource.domElement.style.top = "0px";
+        arSource.domElement.style.left = "0px";
+        arSource.domElement.style.zIndex = "-1";
+        document.body.appendChild(arSource.domElement);
         onResize();
-
-        // 🔥 CRITICAL: Attach camera feed to DOM
-        arToolkitSource.domElement.style.position = "absolute";
-        arToolkitSource.domElement.style.top = "0px";
-        arToolkitSource.domElement.style.left = "0px";
-        arToolkitSource.domElement.style.zIndex = "-1";
-        document.body.appendChild(arToolkitSource.domElement);
     });
 
     window.addEventListener("resize", onResize);
 
     // AR Context
-    arToolkitContext = new THREEx.ArToolkitContext({
+    arContext = new THREEx.ArToolkitContext({
         cameraParametersUrl:
             "https://cdn.jsdelivr.net/gh/AR-js-org/AR.js@3.4.5/data/data/camera_para.dat",
         detectionMode: "mono"
     });
 
-    arToolkitContext.init(() => {
-        console.log("✅ AR Toolkit Context Ready");
+    arContext.init(() => {
+        console.log("✅ AR Context initialized");
     });
 
     // Marker
     markerRoot = new THREE.Group();
     scene.add(markerRoot);
 
-    const markerControls = new THREEx.ArMarkerControls(
-        arToolkitContext,
-        markerRoot,
-        {
-            type: "pattern",
-            patternUrl:
-                "https://cdn.jsdelivr.net/gh/AR-js-org/AR.js@3.4.5/data/data/patt.hiro"
-        }
-    );
-
-    markerControls.addEventListener("markerFound", () => {
-        document.getElementById("ar-status").innerText = "Marker Found";
+    new THREEx.ArMarkerControls(arContext, markerRoot, {
+        type: "pattern",
+        patternUrl:
+            "https://cdn.jsdelivr.net/gh/AR-js-org/AR.js@3.4.5/data/data/patt.hiro"
     });
 
-    markerControls.addEventListener("markerLost", () => {
-        document.getElementById("ar-status").innerText = "Searching...";
+    // UI Buttons
+    document.getElementById("next").addEventListener("click", () => {
+        if (currentStep < STEPS.length - 1) loadStep(currentStep + 1);
     });
 
-    setupUI();
+    document.getElementById("prev").addEventListener("click", () => {
+        if (currentStep > 0) loadStep(currentStep - 1);
+    });
+
+    // Start
     loadStep(0);
     animate();
 }
@@ -115,57 +120,70 @@ function init() {
 // =====================================================
 
 function loadStep(index) {
-    stepIndex = index;
+    currentStep = index;
     const step = STEPS[index];
 
-    document.getElementById("instruction-text").innerText = step.text;
-    document.getElementById("step-counter").innerText = `${index + 1}/${STEPS.length}`;
+    // Update instruction text
+    document.getElementById("text").innerText = step.text;
 
-    document.getElementById("prev-btn").disabled = index === 0;
-    document.getElementById("next-btn").disabled = index === STEPS.length - 1;
-
-    if (currentModel) {
-        markerRoot.remove(currentModel);
-        currentModel.traverse(obj => {
-            if (obj.isMesh) {
-                obj.geometry.dispose();
-                if (obj.material.map) obj.material.map.dispose();
-                obj.material.dispose();
-            }
-        });
-        currentModel = null;
+    // Remove previous object
+    if (currentObject) {
+        markerRoot.remove(currentObject);
+        disposeObject(currentObject);
+        currentObject = null;
     }
 
-    console.log("📦 Loading model:", step.file);
-
-    loader.load(
-        step.file,
-        gltf => {
-            currentModel = gltf.scene;
-            currentModel.scale.set(0.05, 0.05, 0.05); // 🔥 Visible scale
-            currentModel.rotation.x = -Math.PI / 2;
-            markerRoot.add(currentModel);
-            console.log("✅ Step Loaded Successfully");
-        },
-        undefined,
-        err => {
-            console.error("❌ Model load error:", err);
-        }
-    );
+    // Load new object
+    if (step.type === "image") {
+        loadImage(step.file);
+    } else {
+        loadModel(step.file);
+    }
 }
 
 // =====================================================
-// UI
+// LOAD IMAGE (PNG)
 // =====================================================
 
-function setupUI() {
-    document.getElementById("next-btn").onclick = () => {
-        if (stepIndex < STEPS.length - 1) loadStep(stepIndex + 1);
-    };
+function loadImage(src) {
+    textureLoader.load(src, texture => {
+        const geometry = new THREE.PlaneGeometry(1.2, 0.8);
+        const material = new THREE.MeshBasicMaterial({
+            map: texture,
+            transparent: true
+        });
 
-    document.getElementById("prev-btn").onclick = () => {
-        if (stepIndex > 0) loadStep(stepIndex - 1);
-    };
+        currentObject = new THREE.Mesh(geometry, material);
+        currentObject.rotation.x = -Math.PI / 2;
+        markerRoot.add(currentObject);
+    });
+}
+
+// =====================================================
+// LOAD MODEL (GLB)
+// =====================================================
+
+function loadModel(src) {
+    gltfLoader.load(src, gltf => {
+        currentObject = gltf.scene;
+        currentObject.scale.set(0.05, 0.05, 0.05);
+        currentObject.rotation.x = -Math.PI / 2;
+        markerRoot.add(currentObject);
+    });
+}
+
+// =====================================================
+// CLEANUP (PREVENT MEMORY LEAKS)
+// =====================================================
+
+function disposeObject(obj) {
+    obj.traverse(child => {
+        if (child.isMesh) {
+            child.geometry.dispose();
+            if (child.material.map) child.material.map.dispose();
+            child.material.dispose();
+        }
+    });
 }
 
 // =====================================================
@@ -174,28 +192,18 @@ function setupUI() {
 
 function animate() {
     requestAnimationFrame(animate);
-
-    if (arToolkitSource.ready) {
-        arToolkitContext.update(arToolkitSource.domElement);
-    }
-
+    if (arSource.ready) arContext.update(arSource.domElement);
     renderer.render(scene, camera);
 }
 
 // =====================================================
-// RESIZE
+// RESIZE HANDLER
 // =====================================================
 
 function onResize() {
-    arToolkitSource.onResizeElement();
-    arToolkitSource.copyElementSizeTo(renderer.domElement);
-    if (arToolkitContext.arController) {
-        arToolkitSource.copyElementSizeTo(arToolkitContext.arController.canvas);
+    arSource.onResizeElement();
+    arSource.copyElementSizeTo(renderer.domElement);
+    if (arContext.arController) {
+        arSource.copyElementSizeTo(arContext.arController.canvas);
     }
 }
-
-// =====================================================
-// START
-// =====================================================
-
-window.addEventListener("load", init);
