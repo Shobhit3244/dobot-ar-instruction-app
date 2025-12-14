@@ -3,65 +3,51 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, user-scalable=no">
-    <title>Dobot AR Instruction Manual</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Dobot Magician AR – Instruction Guide</title>
 
-    <!-- Mobile Debug -->
+    <!-- Debug panel -->
     <script src="https://cdn.jsdelivr.net/npm/eruda"></script>
     <script>eruda.init();</script>
 
     <!-- Three.js -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 
-    <!-- AR.js (Three.js pipeline only) -->
+    <!-- AR.js (KEEP BOTH – matches working project) -->
+    <script src="https://cdn.jsdelivr.net/gh/jeromeetienne/AR.js@3.4.5/aframe/build/aframe-ar.js"></script>
     <script src="https://cdn.jsdelivr.net/gh/AR-js-org/AR.js@3.4.5/three.js/build/ar-threex.js"></script>
 
     <!-- GLTF Loader -->
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
 
-    <style>
-        body {
-            margin: 0;
-            overflow: hidden;
-            background: black;
-            font-family: sans-serif;
-        }
-
-        #ui {
-            position: absolute;
-            z-index: 10;
-            bottom: 10px;
-            width: 100%;
-            text-align: center;
-            pointer-events: none;
-        }
-
-        #text {
-            color: white;
-            background: rgba(0, 0, 0, 0.6);
-            padding: 10px;
-            margin: 0 12px 8px;
-            border-radius: 6px;
-            font-size: 14px;
-        }
-
-        button {
-            pointer-events: auto;
-            padding: 10px 18px;
-            margin: 4px;
-            font-size: 14px;
-        }
-    </style>
+    <link rel="stylesheet" href="css/style.css">
 </head>
 
 <body>
 
-    <div id="ui">
-        <div id="text">Initializing AR…</div>
-        <button id="prev">◀ Previous</button>
-        <button id="next">Next ▶</button>
+    <!-- Loading screen -->
+    <div id="loading-screen">
+        <div class="loader"></div>
+        <p>Loading AR Experience…</p>
+        <small>Point camera at marker</small>
     </div>
 
+    <!-- AR canvas container -->
+    <div id="ar-container"></div>
+
+    <!-- UI overlay -->
+    <div id="ui-overlay">
+        <div id="instruction-box">
+            <p id="text">Initializing…</p>
+        </div>
+
+        <div id="controls">
+            <button id="prev">◀ Previous</button>
+            <button id="next">Next ▶</button>
+        </div>
+    </div>
+
+    <!-- Main script -->
     <script src="js/script.js"></script>
 </body>
 

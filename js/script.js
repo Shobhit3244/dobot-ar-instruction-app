@@ -1,5 +1,5 @@
 /* =====================================================
-    STEP CONFIGURATION (UNCHANGED)
+   STEP CONFIGURATION (TEXT UNCHANGED)
 ===================================================== */
 
 const STEPS = [
@@ -34,54 +34,30 @@ const gltfLoader = new THREE.GLTFLoader();
 const textureLoader = new THREE.TextureLoader();
 
 /* =====================================================
-   INIT AR (MATCHES WORKING PROJECT)
+   INIT
 ===================================================== */
 
+window.addEventListener("load", initAR);
+
 function initAR() {
-
-    console.log("🚀 Initializing AR Instruction App");
-
     scene = new THREE.Scene();
 
     arCamera = new THREE.Camera();
     scene.add(arCamera);
 
-    renderer = new THREE.WebGLRenderer({
-        antialias: true,
-        alpha: true
-    });
-
+    renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
     renderer.setClearColor(new THREE.Color("lightgrey"), 0);
     renderer.setSize(window.innerWidth, window.innerHeight);
-    renderer.domElement.style.position = "absolute";
-    renderer.domElement.style.top = "0px";
-    renderer.domElement.style.left = "0px";
+    document.getElementById("ar-container").appendChild(renderer.domElement);
 
-    const arContainer = document.getElementById("ar-container");
-    if (arContainer) {
-        arContainer.appendChild(renderer.domElement);
-    } else {
-        console.error("❌ #ar-container missing in HTML");
-        return;
-    }
-
-    /* ---------- AR SOURCE ---------- */
     arToolkitSource = new THREEx.ArToolkitSource({ sourceType: "webcam" });
-
     arToolkitSource.init(() => {
-        console.log("✅ Camera ready");
         onResize();
-
-        const loading = document.getElementById("loading-screen");
-        if (loading) {
-            loading.style.opacity = "0";
-            setTimeout(() => loading.style.display = "none", 500);
-        }
+        hideLoader();
     });
 
     window.addEventListener("resize", onResize);
 
-    /* ---------- AR CONTEXT ---------- */
     arToolkitContext = new THREEx.ArToolkitContext({
         cameraParametersUrl:
             "https://cdn.jsdelivr.net/gh/AR-js-org/AR.js@3.4.5/data/data/camera_para.dat",
@@ -90,10 +66,8 @@ function initAR() {
 
     arToolkitContext.init(() => {
         arCamera.projectionMatrix.copy(arToolkitContext.getProjectionMatrix());
-        console.log("✅ AR context initialized");
     });
 
-    /* ---------- MARKER ---------- */
     markerRoot = new THREE.Group();
     scene.add(markerRoot);
 
@@ -103,38 +77,34 @@ function initAR() {
             "https://cdn.jsdelivr.net/gh/AR-js-org/AR.js@3.4.5/data/data/patt.hiro"
     });
 
-    /* ---------- LIGHTING ---------- */
     scene.add(new THREE.AmbientLight(0xffffff, 0.9));
-    const dirLight = new THREE.DirectionalLight(0xffffff, 0.6);
-    dirLight.position.set(1, 1, 1);
-    scene.add(dirLight);
 
-    /* ---------- UI ---------- */
-    const nextBtn = document.getElementById("next");
-    const prevBtn = document.getElementById("prev");
+    const d = new THREE.DirectionalLight(0xffffff, 0.6);
+    d.position.set(1, 1, 1);
+    scene.add(d);
 
-    if (nextBtn) nextBtn.onclick = () => currentStep < STEPS.length - 1 && loadStep(currentStep + 1);
-    if (prevBtn) prevBtn.onclick = () => currentStep > 0 && loadStep(currentStep - 1);
+    document.getElementById("next").onclick = () =>
+        currentStep < STEPS.length - 1 && loadStep(currentStep + 1);
+
+    document.getElementById("prev").onclick = () =>
+        currentStep > 0 && loadStep(currentStep - 1);
 
     loadStep(0);
     animate();
 }
 
 /* =====================================================
-   STEP LOADER
+   STEP LOADING
 ===================================================== */
 
 function loadStep(index) {
     currentStep = index;
     const step = STEPS[index];
-
-    const textEl = document.getElementById("text");
-    if (textEl) textEl.innerText = step.text;
+    document.getElementById("text").innerText = step.text;
 
     if (currentObject) {
         markerRoot.remove(currentObject);
-        disposeObject(currentObject);
-        currentObject = null;
+        dispose(currentObject);
     }
 
     step.type === "image"
@@ -142,23 +112,20 @@ function loadStep(index) {
         : loadModel(step.file);
 }
 
-/* ---------- IMAGE ---------- */
 function loadImage(src) {
-    textureLoader.load(src, texture => {
+    textureLoader.load(src, tex => {
         const geo = new THREE.PlaneGeometry(1.2, 0.8);
         const mat = new THREE.MeshBasicMaterial({
-            map: texture,
+            map: tex,
             transparent: true,
             side: THREE.DoubleSide
         });
         currentObject = new THREE.Mesh(geo, mat);
-        currentObject.scale.set(1, 1, 1);
         currentObject.rotation.x = -Math.PI / 2;
         markerRoot.add(currentObject);
     });
 }
 
-/* ---------- MODEL ---------- */
 function loadModel(src) {
     gltfLoader.load(src, gltf => {
         currentObject = gltf.scene;
@@ -168,46 +135,36 @@ function loadModel(src) {
     });
 }
 
-/* ---------- CLEANUP ---------- */
-function disposeObject(obj) {
-    if (!obj) return;
-    obj.traverse(child => {
-        if (child.isMesh) {
-            child.geometry?.dispose();
-            if (child.material?.map) child.material.map.dispose();
-            child.material?.dispose();
+function dispose(obj) {
+    obj.traverse(c => {
+        if (c.isMesh) {
+            c.geometry.dispose();
+            c.material.map?.dispose();
+            c.material.dispose();
         }
     });
 }
 
 /* =====================================================
-   LOOP
+   LOOP & RESIZE
 ===================================================== */
 
 function animate() {
     requestAnimationFrame(animate);
-
-    if (arToolkitSource?.ready) {
+    if (arToolkitSource.ready)
         arToolkitContext.update(arToolkitSource.domElement);
-    }
-
     renderer.render(scene, arCamera);
 }
-
-/* =====================================================
-   RESIZE
-===================================================== */
 
 function onResize() {
     arToolkitSource.onResizeElement();
     arToolkitSource.copyElementSizeTo(renderer.domElement);
-    if (arToolkitContext.arController) {
+    if (arToolkitContext.arController)
         arToolkitSource.copyElementSizeTo(arToolkitContext.arController.canvas);
-    }
 }
 
-/* =====================================================
-   START
-===================================================== */
-
-window.addEventListener("load", initAR);
+function hideLoader() {
+    const l = document.getElementById("loading-screen");
+    l.style.opacity = "0";
+    setTimeout(() => l.style.display = "none", 400);
+}
