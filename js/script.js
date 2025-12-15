@@ -29,6 +29,11 @@ let currentStep = 0;
 const gltfLoader = new THREE.GLTFLoader();
 const textureLoader = new THREE.TextureLoader();
 
+let isImageStep = false;
+const IMAGE_SCALE_MIN = 0.6;
+const IMAGE_SCALE_MAX = 1.8;
+
+
 /* ---------- Gesture state ---------- */
 let initialPinchDistance = null;
 let initialScale = 1;
@@ -119,25 +124,64 @@ function loadStep(index) {
         dispose(currentObject);
     }
 
-    step.type === "image"
-        ? loadImage(step.file)
-        : loadModel(step.file);
+    isImageStep = step.type === "image";
+
+    toggleImageZoomUI(isImageStep);
+
+    if (isImageStep) {
+        loadImage(step.file);
+    } else {
+        loadModel(step.file);
+    }
+}
+
+function toggleImageZoomUI(show) {
+    const sliderBox = document.getElementById("image-zoom-container");
+    if (sliderBox) {
+        sliderBox.style.display = show ? "block" : "none";
+    }
 }
 
 function loadImage(src) {
     textureLoader.load(src, tex => {
+
         const geo = new THREE.PlaneGeometry(1.2, 0.8);
         const mat = new THREE.MeshBasicMaterial({
             map: tex,
             transparent: true,
             side: THREE.DoubleSide
         });
+
         currentObject = new THREE.Mesh(geo, mat);
-        resetTransform();
+
+        // Fixed orientation for images
         currentObject.rotation.x = -0.2;
         currentObject.position.z = 0.2;
+
+        // Default safe scale
+        currentObject.scale.set(1, 1, 1);
+
         markerRoot.add(currentObject);
+
+        setupImageZoomSlider();
     });
+}
+
+function setupImageZoomSlider() {
+    const slider = document.getElementById("image-zoom");
+    if (!slider || !currentObject) return;
+
+    slider.value = 1;
+
+    slider.oninput = () => {
+        const scale = THREE.MathUtils.clamp(
+            parseFloat(slider.value),
+            IMAGE_SCALE_MIN,
+            IMAGE_SCALE_MAX
+        );
+
+        currentObject.scale.set(scale, scale, scale);
+    };
 }
 
 function loadModel(src) {
@@ -160,7 +204,7 @@ function resetTransform() {
 ===================================================== */
 
 function onTouchStart(e) {
-    if (!currentObject) return;
+    if (!currentObject || isImageStep) return;
 
     // Double tap → reset
     const now = Date.now();
@@ -178,7 +222,7 @@ function onTouchStart(e) {
 }
 
 function onTouchMove(e) {
-    if (!currentObject) return;
+    if (!currentObject || isImageStep) return;
 
     // One finger → drag
     if (e.touches.length === 1) {
@@ -209,6 +253,7 @@ function onTouchMove(e) {
 }
 
 function onTouchEnd() {
+    if (isImageStep) return;
     initialPinchDistance = null;
 }
 

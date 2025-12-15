@@ -82,3 +82,11 @@ button {
   font-size: 14px;
   cursor: pointer;
 }
+
+#image-zoom-container {
+  width: 80%;
+}
+
+#image-zoom {
+  width: 100%;
+}
