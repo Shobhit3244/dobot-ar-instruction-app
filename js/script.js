@@ -3,22 +3,18 @@
 ===================================================== */
 
 const STEPS = [
-    { type: "model", file: "models/model1.glb", text: "Step 1: Click the power button and wait for green light." },
-
-    { type: "image", file: "models/model2.png", text: "Step 2: Select COM port and click connect." },
+    { type: "model", file: "models/model1a.glb", text: "Step 1: Click the power button and wait for the light to turn green." },
+    { type: "image", file: "models/model2.png", text: "Step 2: Select COM port and click connect. If prompted to update firmware click cancel." },
     { type: "image", file: "models/model3.png", text: "Step 3: Select teaching and playback mode." },
-    { type: "image", file: "models/model4.png", text: "Step 4: Create a new empty file." },
-    { type: "image", file: "models/model5.png", text: "Step 5: Select suction cup tool." },
-
-    { type: "model", file: "models/model6.glb", text: "Step 6: Locate button on robot arm." },
-
-    { type: "image", file: "models/model7.png", text: "Step 7: Press button and move arm." },
-    { type: "image", file: "models/model8.png", text: "Step 8: Enable SuctionCupOn." },
-    { type: "image", file: "models/model9.png", text: "Step 9: Move arm to drop position." },
-    { type: "image", file: "models/model10.png", text: "Step 10: Press start." },
-    { type: "image", file: "models/model11.png", text: "Step 11: Exit and disconnect." },
-
-    { type: "model", file: "models/model12.glb", text: "Step 12: Power off robot." }
+    { type: "image", file: "models/model4.png", text: "Step 4: Create a new empty file. It prompted to save the file, hit discard." },
+    { type: "image", file: "models/model5.png", text: "Step 5: Select suction cup tool from the attachments." },
+    { type: "model", file: "models/model6a.glb", text: "Step 6: Locate button on robot arm." },
+    { type: "image", file: "models/model7.png", text: "Step 7: Press button and move arm to any position. Release the button to see entry in the Software." },
+    { type: "image", file: "models/model8.png", text: "Step 8: Move it to the pickup position and release the button. Enable SuctionCupOn on the entry in the software." },
+    { type: "image", file: "models/model9.png", text: "Step 9: Move it to the drop position and release the button. Disable SuctionCupOn on the entry in the software. Ensure that entries between pick and drop position should have SuctionCupOn" },
+    { type: "image", file: "models/model10.png", text: "Step 10: Press start. For repetetion of movement adjust the loop count." },
+    { type: "image", file: "models/model11.png", text: "Step 11: To close the program hit exit and then disconnect." },
+    { type: "model", file: "models/model12a.glb", text: "Step 12: Power off robot via the power button." }
 ];
 
 /* =====================================================
@@ -32,6 +28,12 @@ let currentStep = 0;
 
 const gltfLoader = new THREE.GLTFLoader();
 const textureLoader = new THREE.TextureLoader();
+
+/* ---------- Gesture state ---------- */
+let initialPinchDistance = null;
+let initialScale = 1;
+let initialRotation = 0;
+let lastTouchTime = 0;
 
 /* =====================================================
    INIT
@@ -48,6 +50,7 @@ function initAR() {
     renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
     renderer.setClearColor(new THREE.Color("lightgrey"), 0);
     renderer.setSize(window.innerWidth, window.innerHeight);
+
     const arContainer = document.getElementById("ar-container");
     if (!arContainer) {
         console.error("❌ #ar-container not found in DOM");
@@ -55,6 +58,10 @@ function initAR() {
     }
     arContainer.appendChild(renderer.domElement);
 
+    /* ---- Touch listeners ---- */
+    renderer.domElement.addEventListener("touchstart", onTouchStart, { passive: false });
+    renderer.domElement.addEventListener("touchmove", onTouchMove, { passive: false });
+    renderer.domElement.addEventListener("touchend", onTouchEnd);
 
     arToolkitSource = new THREEx.ArToolkitSource({ sourceType: "webcam" });
     arToolkitSource.init(() => {
@@ -84,7 +91,6 @@ function initAR() {
     });
 
     scene.add(new THREE.AmbientLight(0xffffff, 0.9));
-
     const d = new THREE.DirectionalLight(0xffffff, 0.6);
     d.position.set(1, 1, 1);
     scene.add(d);
@@ -127,8 +133,8 @@ function loadImage(src) {
             side: THREE.DoubleSide
         });
         currentObject = new THREE.Mesh(geo, mat);
-        currentObject.rotation.y = 0;
-        currentObject.rotation.x = -0.2; // ~11°
+        resetTransform();
+        currentObject.rotation.x = -0.2;
         currentObject.position.z = 0.2;
         markerRoot.add(currentObject);
     });
@@ -137,11 +143,84 @@ function loadImage(src) {
 function loadModel(src) {
     gltfLoader.load(src, gltf => {
         currentObject = gltf.scene;
+        resetTransform();
         currentObject.scale.set(0.001, 0.001, 0.001);
-        currentObject.rotation.x = Math.PI / 2;
         markerRoot.add(currentObject);
     });
 }
+
+function resetTransform() {
+    if (!currentObject) return;
+    currentObject.position.set(0, 0, 0);
+    currentObject.rotation.set(0, 0, 0);
+}
+
+/* =====================================================
+   GESTURES
+===================================================== */
+
+function onTouchStart(e) {
+    if (!currentObject) return;
+
+    // Double tap → reset
+    const now = Date.now();
+    if (now - lastTouchTime < 300) {
+        resetTransform();
+    }
+    lastTouchTime = now;
+
+    if (e.touches.length === 2) {
+        e.preventDefault();
+        initialPinchDistance = getTouchDistance(e.touches);
+        initialScale = currentObject.scale.x;
+        initialRotation = currentObject.rotation.y;
+    }
+}
+
+function onTouchMove(e) {
+    if (!currentObject) return;
+
+    // One finger → drag
+    if (e.touches.length === 1) {
+        e.preventDefault();
+        const dx = e.touches[0].movementX || 0;
+        const dy = e.touches[0].movementY || 0;
+        currentObject.position.x += dx * 0.0005;
+        currentObject.position.z -= dy * 0.0005;
+    }
+
+    // Two fingers → zoom + rotate
+    if (e.touches.length === 2 && initialPinchDistance) {
+        e.preventDefault();
+        const dist = getTouchDistance(e.touches);
+        const scale = THREE.MathUtils.clamp(
+            initialScale * (dist / initialPinchDistance),
+            0.0005,
+            0.01
+        );
+        currentObject.scale.set(scale, scale, scale);
+
+        const angle = Math.atan2(
+            e.touches[1].pageX - e.touches[0].pageX,
+            e.touches[1].pageY - e.touches[0].pageY
+        );
+        currentObject.rotation.y = initialRotation + angle;
+    }
+}
+
+function onTouchEnd() {
+    initialPinchDistance = null;
+}
+
+function getTouchDistance(touches) {
+    const dx = touches[0].pageX - touches[1].pageX;
+    const dy = touches[0].pageY - touches[1].pageY;
+    return Math.sqrt(dx * dx + dy * dy);
+}
+
+/* =====================================================
+   CLEANUP
+===================================================== */
 
 function dispose(obj) {
     obj.traverse(c => {
